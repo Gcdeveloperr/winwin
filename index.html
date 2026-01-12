@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ruleta de Premios</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI",Arial,sans-serif;
+    background:#fff;
+    color:#0a1b33;
+    width:100vw;height:100vh;
+    display:flex;justify-content:center;align-items:center;
+    overflow:hidden;
+  }
+
+  :root{
+    --ink:#0a1b33;
+    --blue:#2563eb;
+    --blueDark:#0a1b33;
+    --gold:#d4af37;
+    --red:#d10000;
+    --wheelBg:#f2f4f8;
+  }
+
+  /* ====== Gate (solo celulares) ====== */
+  .gate{
+    display:none;
+    width:100%;
+    height:100%;
+    padding:6vw;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+  }
+  .gate p{
+    font-size:clamp(16px,4.6vw,20px);
+    color:var(--ink);
+  }
+
+  /* ====== App ====== */
+  .app{
+    width:100%;
+    height:100%;
+    max-width:420px;
+    padding:4vw;
+    display:none; /* se activa solo si es celular */
+    flex-direction:column;
+    justify-content:space-between;
+  }
+
+  .header{text-align:center;}
+  .header h1{font-size:clamp(20px,5vw,26px);font-weight:600;color:var(--ink);}
+  .header p{font-size:clamp(13px,3.5vw,15px);color:var(--ink);opacity:.65;}
+
+  .wheel-container{position:relative;width:100%;aspect-ratio:1/1;}
+  canvas#wheel{width:100%;height:100%;background:var(--wheelBg);}
+
+  .pointer{
+    position:absolute;top:-2vw;left:50%;transform:translateX(-50%);
+    width:0;height:0;
+    border-left:3vw solid transparent;
+    border-right:3vw solid transparent;
+    border-top:4vw solid var(--gold);
+  }
+
+  .center-btn{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:38%;height:38%;
+    background:var(--gold);
+    border-radius:50%;
+    display:flex;justify-content:center;align-items:center;
+    cursor:pointer;user-select:none;
+  }
+  .center-btn span{
+    color:var(--ink);
+    font-size:clamp(14px,4vw,18px);
+    font-weight:700;
+    letter-spacing:.5px;
+  }
+
+  .controls{display:flex;justify-content:center;gap:6vw;padding-top:2vw;}
+  button{
+    padding:3vw 7vw;
+    font-size:clamp(13px,3.5vw,15px);
+    background:var(--ink);
+    color:#fff;border:none;cursor:pointer;letter-spacing:.4px;
+  }
+  button:disabled{opacity:.45;cursor:not-allowed;}
+
+  /* Modal */
+  .modal{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.20);
+    display:none;justify-content:center;align-items:center;
+    z-index:10;
+  }
+  .modal.show{display:flex;}
+
+  .modal-box{
+    position:relative;
+    width:90%;max-width:360px;
+    background:var(--blue);
+    border:1px solid rgba(255,255,255,.55);
+    padding:5vw;
+    z-index:20;
+  }
+
+  .close-x{
+    position:absolute;top:2.5vw;right:2.5vw;
+    width:38px;height:38px;
+    background:transparent;border:none;cursor:pointer;
+  }
+  .close-x:before,.close-x:after{
+    content:"";
+    position:absolute;left:50%;top:50%;
+    width:24px;height:3px;background:var(--red);
+    transform-origin:center;
+  }
+  .close-x:before{transform:translate(-50%,-50%) rotate(45deg);}
+  .close-x:after {transform:translate(-50%,-50%) rotate(-45deg);}
+
+  .sign{
+    border:1px solid rgba(255,255,255,.55);
+    padding:12px 10px 14px;margin-bottom:14px;
+    background:rgba(10,27,51,.18);
+    text-align:center;
+  }
+  .sign h2{
+    font-size:clamp(18px,4.7vw,22px);
+    color:#fff;font-weight:900;letter-spacing:1px;
+  }
+
+  /* Luces doradas redondas */
+  .lights{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .bulb{
+    width:12px;height:12px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.65);
+    background:rgba(212,175,55,.95);
+  }
+  @keyframes glowA{0%,35%,100%{opacity:1}55%{opacity:.18}}
+  @keyframes glowB{0%,20%,100%{opacity:.25}35%{opacity:1}70%{opacity:.32}}
+  @keyframes dead {0%,100%{opacity:.10}50%{opacity:.14}}
+  .bulb.a{animation:glowA 1.15s infinite;}
+  .bulb.b{animation:glowB .95s infinite;}
+  .bulb.dead{animation:dead 1.8s infinite;}
+
+  .modal-box p{
+    font-size:clamp(14px,3.8vw,16px);
+    margin-bottom:3vw;color:#fff;
+  }
+  .code{
+    background:rgba(255,255,255,.92);
+    padding:3vw;text-align:center;margin-bottom:4vw;
+    font-size:clamp(14px,3.8vw,16px);
+    color:var(--ink);letter-spacing:.6px;font-weight:800;
+    border:1px solid rgba(255,255,255,.55);
+  }
+  .modal-box .claim{
+    width:100%;
+    background:var(--blueDark);
+    color:#fff;padding:3vw;border:none;cursor:pointer;
+    font-size:clamp(14px,3.8vw,16px);
+  }
+
+  /* FX arriba */
+  #fx{
+    position:fixed;inset:0;
+    width:100vw;height:100vh;
+    pointer-events:none;
+    z-index:9999;
+    display:none; /* solo celular */
+  }
+</style>
+</head>
+
+<body>
+  <!-- Mensaje para NO-celulares -->
+  <div class="gate" id="gate">
+    <p>Solo funciona en celulares.</p>
+  </div>
+
+  <!-- App (solo celulares) -->
+  <div class="app" id="app">
+    <div class="header">
+      <h1>Ruleta de Premios</h1>
+      <p>Gira y detén cuando quieras</p>
+    </div>
+
+    <div class="wheel-container">
+      <canvas id="wheel"></canvas>
+      <div class="pointer"></div>
+      <div class="center-btn" id="centerBtn"><span id="centerText">GIRAR</span></div>
+    </div>
+
+    <div class="controls">
+      <button id="btnSpin">GIRAR</button>
+      <button id="btnStop" disabled>DETENER</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <button class="close-x" id="closeModal" aria-label="Cerrar"></button>
+
+      <div class="sign">
+        <h2>HAS GANADO</h2>
+        <div class="lights" aria-hidden="true">
+          <div class="bulb a"></div>
+          <div class="bulb dead"></div>
+          <div class="bulb b"></div>
+          <div class="bulb a"></div>
+          <div class="bulb dead"></div>
+          <div class="bulb b"></div>
+          <div class="bulb a"></div>
+          <div class="bulb dead"></div>
+          <div class="bulb b"></div>
+        </div>
+      </div>
+
+      <p id="prizeName"></p>
+      <div class="code" id="prizeCode"></div>
+      <button class="claim" id="claimBtn">Reclamar por WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- FX -->
+  <canvas id="fx"></canvas>
+
+<script>
+/* ================= SOLO CELULARES =================
+   - Bloquea tablets y desktop
+   - Permite teléfonos (mobile real)
+*/
+const gate = document.getElementById("gate");
+const app  = document.getElementById("app");
+const fxEl = document.getElementById("fx");
+
+function isPhoneOnly(){
+  // 1) Detecta "mobile" y bloquea tablets por iPad/Android tablet
+  const ua = navigator.userAgent || "";
+  const isMobileUA = /Mobi|Android|iPhone|iPod/i.test(ua);
+  const isIPad = /iPad/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
+  const isTablet = isIPad || isAndroidTablet;
+
+  // 2) Ancho máximo típico de teléfono (evita tablets grandes)
+  const phoneWidth = Math.min(window.innerWidth, window.innerHeight) <= 480;
+
+  // Reglas: debe ser móvil y NO tablet, y además ancho tipo teléfono
+  return isMobileUA && !isTablet && phoneWidth;
+}
+
+function applyGate(){
+  if(isPhoneOnly()){
+    gate.style.display = "none";
+    app.style.display  = "flex";
+    fxEl.style.display = "block";
+    // iniciar app si existe init()
+    if(typeof window.__startGame === "function") window.__startGame();
+  }else{
+    // apagar juego si estaba
+    if(typeof window.__stopGame === "function") window.__stopGame();
+
+    app.style.display  = "none";
+    fxEl.style.display = "none";
+    gate.style.display = "flex";
+  }
+}
+
+window.addEventListener("resize", applyGate);
+window.addEventListener("orientationchange", applyGate);
+
+/* ================= JUEGO (solo si gate permite) ================= */
+const WHATSAPP = "573239486845";
+const prizes = [
+  { name:"1 mes gratis de IA empresarial", code:"IA1M-7B2Q" },
+  { name:"1 año gratis de Canva Pro", code:"CANVA1Y-4F9K" },
+  { name:"Creación de sitio web con 2 secciones", code:"WEB2SEC-8D3M" },
+  { name:"1 mes gratis de IA empresarial", code:"IA1M-7B2Q" },
+  { name:"1 año gratis de Canva Pro", code:"CANVA1Y-4F9K" },
+  { name:"Creación de sitio web con 2 secciones", code:"WEB2SEC-8D3M" }
+];
+
+const wheel = document.getElementById("wheel");
+const ctx = wheel.getContext("2d");
+
+const fx = document.getElementById("fx");
+const fxCtx = fx.getContext("2d");
+
+const btnSpin = document.getElementById("btnSpin");
+const btnStop = document.getElementById("btnStop");
+const centerBtn = document.getElementById("centerBtn");
+const centerText = document.getElementById("centerText");
+
+const modal = document.getElementById("modal");
+const closeModal = document.getElementById("closeModal");
+const prizeNameEl = document.getElementById("prizeName");
+const prizeCodeEl = document.getElementById("prizeCode");
+const claimBtn = document.getElementById("claimBtn");
+
+const slice = (Math.PI * 2) / prizes.length;
+
+/* ===== Responsive ===== */
+function resizeWheel(){
+  wheel.width = wheel.offsetWidth;
+  wheel.height = wheel.offsetHeight;
+  drawWheel();
+}
+function resizeFx(){
+  fx.width = window.innerWidth;
+  fx.height = window.innerHeight;
+}
+
+/* ===== Audio ===== */
+let audioCtx=null, master=null, noiseBuf=null;
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  master = audioCtx.createGain();
+  master.gain.value = 0.75;
+  master.connect(audioCtx.destination);
+
+  noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate*2, audioCtx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1)*0.9;
+}
+function tickSound(speedAbs){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const freq = 520 + Math.min(900, speedAbs * 1800);
+  osc.type = "square";
+  osc.frequency.setValueAtTime(freq, t);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.10, t + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.030);
+  osc.connect(gain); gain.connect(master);
+  osc.start(t); osc.stop(t + 0.04);
+}
+function fireworkBoom(intensity=1){
+  if(!audioCtx || !noiseBuf) return;
+  const t = audioCtx.currentTime;
+
+  const osc = audioCtx.createOscillator();
+  const og  = audioCtx.createGain();
+  osc.type="sine";
+  osc.frequency.setValueAtTime(120,t);
+  osc.frequency.exponentialRampToValueAtTime(46,t+0.22);
+  og.gain.setValueAtTime(0.0001,t);
+  og.gain.exponentialRampToValueAtTime(0.20*intensity,t+0.01);
+  og.gain.exponentialRampToValueAtTime(0.0001,t+0.30);
+  osc.connect(og); og.connect(master);
+  osc.start(t); osc.stop(t+0.34);
+
+  const src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+  const bp  = audioCtx.createBiquadFilter();
+  bp.type="bandpass"; bp.frequency.value=190; bp.Q.value=0.9;
+  const ng  = audioCtx.createGain();
+  ng.gain.setValueAtTime(0.0001,t);
+  ng.gain.exponentialRampToValueAtTime(0.22*intensity,t+0.01);
+  ng.gain.exponentialRampToValueAtTime(0.0001,t+0.26);
+  src.connect(bp); bp.connect(ng); ng.connect(master);
+  src.start(t); src.stop(t+0.28);
+
+  fireworkCrackle(0.70*intensity);
+}
+function fireworkCrackle(intensity=1){
+  if(!audioCtx || !noiseBuf) return;
+  const t = audioCtx.currentTime;
+  const src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+  const hp  = audioCtx.createBiquadFilter();
+  hp.type="highpass"; hp.frequency.value=1400;
+  const g   = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.13*intensity,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+  src.connect(hp); hp.connect(g); g.connect(master);
+  src.start(t); src.stop(t+0.25);
+}
+function stopThump(){
+  if(!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type="sine";
+  osc.frequency.setValueAtTime(140,t);
+  osc.frequency.exponentialRampToValueAtTime(60,t+0.12);
+  gain.gain.setValueAtTime(0.0001,t);
+  gain.gain.exponentialRampToValueAtTime(0.16,t+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+  osc.connect(gain); gain.connect(master);
+  osc.start(t); osc.stop(t+0.18);
+}
+
+/* ===== Ruleta ===== */
+let angle=0, speed=0, spinning=false, braking=false, lastIndexForTick=0;
+let animRAF = null;
+
+function currentIndexAtPointer(){
+  const a = ((Math.PI*1.5 - angle)%(Math.PI*2) + (Math.PI*2))%(Math.PI*2);
+  return Math.floor(a / slice);
+}
+function drawWheel(){
+  const w = wheel.width;
+  const r = w/2;
+  ctx.clearRect(0,0,w,w);
+
+  ctx.save();
+  ctx.translate(r,r);
+  ctx.rotate(angle);
+
+  for(let i=0;i<prizes.length;i++){
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,r,i*slice,(i+1)*slice);
+    ctx.closePath();
+    ctx.fillStyle = (i%2===0) ? "#0a1b33" : "#2563eb";
+    ctx.fill();
+
+    ctx.save();
+    ctx.rotate(i*slice + slice/2);
+    ctx.translate(r*0.64, 0);
+    ctx.rotate(Math.PI/2);
+
+    ctx.fillStyle="#fff";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    const fontSize = Math.max(12, r*0.085);
+    ctx.font = `${fontSize}px Segoe UI`;
+    wrapText(prizes[i].name, 0, 0, r*0.62, fontSize*1.05);
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+function wrapText(text,x,y,maxWidth,lineHeight){
+  const words=text.split(" ");
+  let line=""; const lines=[];
+  for(const w of words){
+    const test = line ? (line+" "+w) : w;
+    if(ctx.measureText(test).width<=maxWidth) line=test;
+    else { lines.push(line); line=w; }
+  }
+  if(line) lines.push(line);
+
+  if(lines.length===1){ ctx.fillText(lines[0],x,y); return; }
+
+  const l1=lines[0];
+  let l2=lines.slice(1).join(" ");
+  while(l2.length>4 && ctx.measureText(l2+"…").width>maxWidth) l2=l2.slice(0,-1);
+  l2=l2+"…";
+
+  ctx.fillText(l1, x, y-lineHeight*0.45);
+  ctx.fillText(l2, x, y+lineHeight*0.45);
+}
+
+/* ===== Pirotecnia normal (sin llenar pantalla) ===== */
+let fxRunning=false, rocketsBottom=[], sideRockets=[], particles=[];
+let fxTimer=null, fxStopTimer=null, topBurstTimer=null;
+let fxRAF=null;
+
+function rand(min,max){ return Math.random()*(max-min)+min; }
+
+function startFireworks15s(){
+  resizeFx();
+  fxRunning=true;
+  rocketsBottom=[]; sideRockets=[]; particles=[];
+  fxCtx.clearRect(0,0,fx.width,fx.height);
+
+  for(let i=0;i<6;i++) setTimeout(()=>launchBottom(true), i*120);
+  spawnSideRocket();
+
+  fxTimer = setInterval(()=>{
+    launchBottom(false);
+    if(Math.random()<0.22) spawnSideRocket();
+  }, 320);
+
+  topBurstTimer = setInterval(()=>{
+    if(!fxRunning) return;
+    const x = rand(fx.width*0.15, fx.width*0.85);
+    const y = rand(fx.height*0.06, fx.height*0.28);
+    explode(x,y,false,true);
+  }, 520);
+
+  fxStopTimer = setTimeout(()=>stopFireworks(), 15000);
+  fxRAF = requestAnimationFrame(fxLoop);
+}
+
+function stopFireworks(){
+  fxRunning=false;
+  if(fxTimer) clearInterval(fxTimer);
+  if(topBurstTimer) clearInterval(topBurstTimer);
+  if(fxStopTimer) clearTimeout(fxStopTimer);
+  fxTimer=null; topBurstTimer=null; fxStopTimer=null;
+
+  rocketsBottom=[]; sideRockets=[]; particles=[];
+  if(fxRAF) cancelAnimationFrame(fxRAF);
+  fxRAF=null;
+
+  fxCtx.clearRect(0,0,fx.width,fx.height);
+}
+
+function launchBottom(extraBurst){
+  if(!fxRunning) return;
+  const w=fx.width, h=fx.height;
+  rocketsBottom.push({
+    x: rand(w*0.18, w*0.82),
+    y: h + rand(10,50),
+    vx: rand(-0.5,0.5),
+    vy: rand(-11.5,-9.0),
+    life: rand(38,60),
+    extraBurst
+  });
+}
+
+function spawnSideRocket(){
+  if(!fxRunning) return;
+  const w=fx.width, h=fx.height;
+  const fromLeft = Math.random()<0.5;
+  sideRockets.push({
+    x: fromLeft ? -60 : w+60,
+    y: rand(h*0.20, h*0.78),
+    vx: fromLeft ? rand(9,13) : -rand(9,13),
+    vy: rand(-1.2,1.2),
+    life: rand(45,70)
+  });
+}
+
+function explode(x,y,extraBurst=false, topBurst=false){
+  const palette=[
+    "rgba(255,215,0,0.95)",
+    "rgba(37,99,235,0.95)",
+    "rgba(220,38,38,0.95)"
+  ];
+  const base = topBurst ? 45 : 70;
+  const count = extraBurst ? base+25 : base;
+
+  if(audioCtx) fireworkBoom(extraBurst ? 1.0 : 0.8);
+
+  for(let i=0;i<count;i++){
+    const a = rand(0,Math.PI*2);
+    const sp = rand(topBurst ? 1.6 : 2.0, extraBurst ? 4.8 : 4.0);
+    particles.push({
+      x,y,
+      vx: Math.cos(a)*sp,
+      vy: Math.sin(a)*sp,
+      life: rand(topBurst ? 35 : 45, extraBurst ? 75 : 60),
+      g: 0.08 + Math.random()*0.06,
+      col: palette[(Math.random()*palette.length)|0],
+      size: Math.random()<0.18 ? 3 : 2
+    });
+  }
+
+  if(particles.length > 1400) particles.splice(0, particles.length - 1400);
+}
+
+function fxLoop(){
+  if(!fxRunning) return;
+
+  const w=fx.width, h=fx.height;
+
+  // Fade sin “teñir” el fondo
+  fxCtx.save();
+  fxCtx.globalCompositeOperation = "destination-out";
+  fxCtx.fillStyle = "rgba(0,0,0,0.10)";
+  fxCtx.fillRect(0,0,w,h);
+  fxCtx.restore();
+
+  fxCtx.save();
+  fxCtx.globalCompositeOperation = "lighter";
+
+  for(let i=rocketsBottom.length-1;i>=0;i--){
+    const r=rocketsBottom[i];
+    r.x += r.vx; r.y += r.vy;
+    r.vy += 0.16; r.life--;
+
+    fxCtx.fillStyle = "rgba(255,215,0,0.85)";
+    fxCtx.fillRect(r.x, r.y, 2, 10);
+
+    if(r.life<=0 || r.vy>-1.2){
+      explode(r.x,r.y,r.extraBurst,false);
+      rocketsBottom.splice(i,1);
+    }
+  }
+
+  for(let i=sideRockets.length-1;i>=0;i--){
+    const sr=sideRockets[i];
+    sr.x += sr.vx; sr.y += sr.vy;
+    sr.life--;
+
+    fxCtx.fillStyle = "rgba(255,215,0,0.88)";
+    fxCtx.fillRect(sr.x, sr.y, 12, 3);
+
+    if(sr.life<=0 || sr.x<-120 || sr.x>w+120){
+      explode(sr.x,sr.y,true,false);
+      sideRockets.splice(i,1);
+    }
+  }
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += p.g;
+    p.life--;
+
+    fxCtx.fillStyle = p.col;
+    fxCtx.fillRect(p.x, p.y, p.size, p.size);
+
+    if(p.life<=0 || p.x<-140 || p.x>w+140 || p.y>h+140){
+      particles.splice(i,1);
+    }
+  }
+
+  fxCtx.restore();
+
+  fxRAF = requestAnimationFrame(fxLoop);
+}
+
+/* ===== Animación ===== */
+function animate(){
+  if(spinning){
+    angle += speed;
+    speed *= 0.992;
+    if(braking) speed *= 0.985;
+
+    const idx = currentIndexAtPointer();
+    if(idx !== lastIndexForTick){
+      lastIndexForTick = idx;
+      if(audioCtx) tickSound(Math.abs(speed));
+    }
+
+    if(Math.abs(speed) < 0.0012){
+      spinning=false; braking=false; speed=0;
+      if(audioCtx) stopThump();
+      showResult();
+    }
+  }
+  drawWheel();
+  animRAF = requestAnimationFrame(animate);
+}
+
+/* ===== Resultado ===== */
+function showResult(){
+  const index = currentIndexAtPointer();
+  const prize = prizes[index];
+  prizeNameEl.textContent = prize.name;
+  prizeCodeEl.textContent = prize.code;
+  modal.classList.add("show");
+  startFireworks15s();
+}
+
+/* ===== Controles ===== */
+function startSpin(){
+  initAudio();
+  audioCtx.resume?.();
+
+  modal.classList.remove("show");
+  stopFireworks();
+
+  spinning=true; braking=false;
+  speed = (Math.random()*0.22 + 0.32) * (Math.random()<0.5 ? 1 : -1);
+  lastIndexForTick = currentIndexAtPointer();
+
+  btnStop.disabled=false;
+  centerText.textContent="DETENER";
+}
+function stopSpin(){ if(spinning) braking=true; }
+
+btnSpin.addEventListener("click", startSpin);
+btnStop.addEventListener("click", stopSpin);
+centerBtn.addEventListener("click", () => { if(!spinning) startSpin(); else stopSpin(); });
+
+closeModal.addEventListener("click", () => { modal.classList.remove("show"); stopFireworks(); });
+
+claimBtn.addEventListener("click", () => {
+  const msg =
+`Hola, gané este premio:
+
+${prizeNameEl.textContent}
+Código: ${prizeCodeEl.textContent}
+
+¿Me ayudas a reclamarlo, por favor?`;
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+});
+
+/* ===== Start/Stop hooks for gate ===== */
+window.__startGame = function(){
+  resizeWheel(); resizeFx();
+  if(!animRAF) animate();
+};
+window.__stopGame = function(){
+  // parar animaciones y limpiar
+  try{ stopFireworks(); }catch(e){}
+  if(animRAF){ cancelAnimationFrame(animRAF); animRAF=null; }
+  modal.classList.remove("show");
+};
+
+/* ===== INIT ===== */
+function boot(){
+  // listeners internos
+  window.addEventListener("resize", () => { if(app.style.display==="flex"){ resizeWheel(); resizeFx(); } });
+  // aplicar gate
+  applyGate();
+}
+boot();
+</script>
+</body>
+</html>
