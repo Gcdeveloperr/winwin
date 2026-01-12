@@ -184,7 +184,7 @@
   <!-- App (solo celulares) -->
   <div class="app" id="app">
     <div class="header">
-      <h1>Ruleta de Premios</h1>
+      <h1>TDT todos damos todo!!</h1>
       <p>Gira y detén cuando quieras</p>
     </div>
 
@@ -196,7 +196,7 @@
 
     <div class="controls">
       <button id="btnSpin">GIRAR</button>
-      <button id="btnStop" disabled>DETENER</button>
+      <button id="btnStop" disabled>STOP/PLAY</button>
     </div>
   </div>
 
@@ -276,12 +276,12 @@ window.addEventListener("orientationchange", applyGate);
 /* ================= JUEGO (solo si gate permite) ================= */
 const WHATSAPP = "573239486845";
 const prizes = [
-  { name:"1 mes gratis de IA empresarial", code:"IA1M-7B2Q" },
-  { name:"1 año gratis de Canva Pro", code:"CANVA1Y-4F9K" },
-  { name:"Creación de sitio web con 2 secciones", code:"WEB2SEC-8D3M" },
-  { name:"1 mes gratis de IA empresarial", code:"IA1M-7B2Q" },
-  { name:"1 año gratis de Canva Pro", code:"CANVA1Y-4F9K" },
-  { name:"Creación de sitio web con 2 secciones", code:"WEB2SEC-8D3M" }
+  { name:"1 mes de GPT empresarial 15mil", code:"IA1M-7B2Q" },
+  { name:"1 año de Canva Pro 20mil", code:"CANVA1Y-4F9K" },
+  { name:"Sigue intentando", code:"WEB2SEC-8D3M" },
+  { name:"1 mes de GPT empresarial 15mil", code:"IA1M-7B2Q" },
+  { name:"1 año de Canva Pro 20mil", code:"CANVA1Y-4F9K" },
+  { name:"Sigue intentando", code:"WEB2SEC-8D3M" }
 ];
 
 const wheel = document.getElementById("wheel");
@@ -667,7 +667,7 @@ function startSpin(){
   lastIndexForTick = currentIndexAtPointer();
 
   btnStop.disabled=false;
-  centerText.textContent="DETENER";
+  centerText.textContent="STOP/PLAY";
 }
 function stopSpin(){ if(spinning) braking=true; }
 
